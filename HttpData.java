@@ -1,10 +1,10 @@
-package com.kolapsis.utils;
-
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
@@ -50,6 +50,7 @@ import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.cookie.Cookie;
 import org.apache.http.entity.mime.HttpMultipartMode;
+import org.apache.http.entity.mime.MultipartEntity;
 import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.entity.mime.content.StringBody;
 import org.apache.http.entity.StringEntity;
@@ -154,7 +155,8 @@ public class HttpData extends Thread {
 	}
 
 	public void consume() {
-		CloseUtils.closeQuietly(stream);
+		if (stream != null) 
+            try { stream.close(); } catch (IOException e) {}
 		if (entity != null) {
 			try { entity.consumeContent(); }
 			catch (IOException e) {}
