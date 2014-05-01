@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -120,27 +119,6 @@ public class HttpData extends Thread {
 	private String content;
 	private JSONObject json;
 	private ProgressListener mListener;
-
-	public void traceData() {
-		for (int i=0; i<this.data.size(); i++) {
-			Log.v(TAG, "-> " + this.data.get(i).getName()+": "+this.data.get(i).getValue());
-		}
-	}
-	
-	public void tracePage() {
-		if (asString() != null) {
-			BufferedReader reader = new BufferedReader(new StringReader(asString()));
-			try {
-				String s;
-				while ((s = reader.readLine()) != null)
-					Log.v(TAG, "-> " + s);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		} else {
-			Log.e(TAG, "content null");
-		}
-	}
 
 	public HttpData(String url) {
 		this(getDefaultHttpClient(), url);
