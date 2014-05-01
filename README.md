@@ -6,8 +6,8 @@ Utility for HttpRequest execution on Android
 Requirement
 -----------
 
-* apache httpclient
-* apache httpmime
+* apache httpclient librairy
+* apache httpmime librairy
 
 Usage
 -----
