@@ -73,16 +73,10 @@ public class HttpData extends Thread {
 
 	private final static char[] MULTIPART_CHARS = "-_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
 
-	public static String generateBoundary() {
-		StringBuilder buffer = new StringBuilder();
-		Random rand = new Random();
-		int count = rand.nextInt(11) + 30; // a random size from 30 to 40
-		for (int i = 0; i < count; i++) {
-			buffer.append(MULTIPART_CHARS[rand.nextInt(MULTIPART_CHARS.length)]);
-		}
-		return buffer.toString();
-	}
-
+	/**
+	 * HttpDataException throw when exception occure on request execution
+	 * @author benjamin
+	 */
 	public static final class HttpDataException extends Exception {
 		private static final long serialVersionUID = 4248039827913459855L;
 		public HttpDataException(String string) {
@@ -94,14 +88,12 @@ public class HttpData extends Thread {
 		}
 	}
 	
+	/**
+	 * Interface for listening post file progress
+	 * @author benjamin
+	 */
 	public static interface ProgressListener {
 		public void transferred(long transferred);
-	}
-
-	private static AbstractHttpClient getDefaultHttpClient() {
-		HttpParams params = new BasicHttpParams();
-		params.setParameter(ClientPNames.HANDLE_REDIRECTS, false);
-		return new DefaultHttpClient(params);
 	}
 
 	private final String url;
@@ -120,9 +112,18 @@ public class HttpData extends Thread {
 	private JSONObject json;
 	private ProgressListener mListener;
 
+	/**
+	 * HttpData (default) constructor
+	 * @param url
+	 */
 	public HttpData(String url) {
 		this(getDefaultHttpClient(), url);
 	}
+
+	/**
+	 * HttpData constructor with specific client
+	 * @param url
+	 */
 	public HttpData(AbstractHttpClient client, String url) {
 		this.client = client;
 		this.url = url;
@@ -131,32 +132,44 @@ public class HttpData extends Thread {
 		this.data = new ArrayList<NameValuePair>();
 		this.files = new HashMap<String, File>();
 	}
-
-	public void consume() {
-		if (stream != null) 
-            try { stream.close(); } catch (IOException e) {}
-		if (entity != null) {
-			try { entity.consumeContent(); }
-			catch (IOException e) {}
-		}
-		if (request != null) request.abort();
-	}
 	
-	public HttpData setProgressListener(ProgressListener l) {
-		mListener = l;
+	/**
+	 * Define progress listener
+	 * @param listener
+	 * @return HttpData current instance
+	 */
+	public HttpData setProgressListener(ProgressListener listener) {
+		mListener = listener;
 		return this;
 	}
 
+	/**
+	 * Add header (pair name/value) to HttpRequest
+	 * @param name Header name
+	 * @param value Header value
+	 * @return HttpData current instance
+	 */
 	public HttpData header(String name, String value) {
 		this.headers.add(new BasicHeader(name,value));
 		return this;
 	}
 
+	/**
+	 * Get existing header in request 
+	 * @param name Header name
+	 * @return An org.apache.http.Header according to the name or null is not exist
+	 */
 	public Header header(String name) {
 		if (this.response == null) return null;
 		Header header = this.response.getFirstHeader(name);
 		return header;
 	}
+
+	/**
+	 * Get existing headers in request 
+	 * @param name Header name
+	 * @return An array of Apache Header according to the name or empty array is not exist
+	 */
 	public Header[] headers() {
 		if (this.response != null) return this.response.getAllHeaders();
 		else {
@@ -166,19 +179,39 @@ public class HttpData extends Thread {
 		}
 	}
 
+	/**
+	 * Add data (pair name/value) to request
+	 * @param name Data name
+	 * @param value Data value
+	 * @return HttpData current instance
+	 */
 	public HttpData data(String name, String value) {
 		this.data.add(new BasicNameValuePair(name,value));
 		return this;
 	}
+	/**
+	 * Add list of data (pair name/value) to request 
+	 * @param value An ArrayList of Apache NameValuePair values
+	 * @return HttpData current instance
+	 */
 	public HttpData data(ArrayList<NameValuePair> value) {
 		this.data = value;
 		return this;
 	}
+	/**
+	 * Add JSONObject as data to request
+	 * @param value A JSONObject
+	 * @return HttpData current instance
+	 */
 	public HttpData data(JSONObject value) {
 		this.jsonData = value;
 		return this;
 	}
-	
+	/**
+	 * Get existing data value in request
+	 * @param name A data key name
+	 * @return String value if key exist or null
+	 */
 	public String data(String name) {
 		for (NameValuePair dt : this.data) {
 			if (dt.getName().equals(name)) return dt.getValue();
@@ -186,35 +219,88 @@ public class HttpData extends Thread {
 		return null;
 	}
 
-	public HttpData file(File fl) {
-		return file(fl.getName(), fl);
+	/**
+	 * Add file to request
+	 * @param file An java.io.File object instance
+	 * @return HttpData current instance
+	 */
+	public HttpData file(File file) {
+		return file(file.getName(), file);
 	}
-	public HttpData file(String name, File fl) {
-		this.files.put(name, fl);
+	/**
+	 * Add file to request
+	 * @param name A specific name for HTTP post file name
+	 * @param file An java.io.File object instance
+	 * @return HttpData current instance
+	 */
+	public HttpData file(String name, File file) {
+		this.files.put(name, file);
 		return this;
 	}
 	
+	/**
+	 * Submit HEAD request
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData head() throws HttpDataException {
 		return head(60000);
 	}
+	/**
+	 * Submit HEAD request
+	 * @param timeOut specific request execution timeout
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData head(final int timeOut) throws HttpDataException {
 		return head(timeOut, null);
 	}
+	/**
+	 * Submit HEAD request
+	 * @param context A specific Apache HttpContext to execute this request
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData head(final HttpContext context) throws HttpDataException {
 		return head(60000, context);
 	}
+	/**
+	 * Submit HEAD request
+	 * @param timeOut specific request execution timeout
+	 * @param context A specific Apache HttpContext to execute this request
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData head(final int timeOut, final HttpContext context) throws HttpDataException {
 		HttpHead request = new HttpHead(this.url);
 		doQuery(context, request, timeOut);
 		return this;
 	}
 
+	/**
+	 * Submit GET request
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData get() throws HttpDataException {
 		return get(null);
 	}
+	/**
+	 * Submit GET request
+	 * @param context A specific Apache HttpContext to execute this request
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData get(final HttpContext context) throws HttpDataException {
 		return get(context, false);
 	}
+	/**
+	 * Submit GET request
+	 * @param context A specific Apache HttpContext to execute this request
+	 * @param redirect Enable/Disable request redirection authorization
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData get(final HttpContext context, final boolean redirect) throws HttpDataException {
 		//System.out.print(".get()\n");
 		this.loadWithRedirect = redirect;
@@ -231,12 +317,30 @@ public class HttpData extends Thread {
 		return this;
 	}
 
+	/**
+	 * Submit POST request
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData post() throws HttpDataException {
 		return post(null);
 	}
+	/**
+	 * Submit POST request
+	 * @param context A specific Apache HttpContext to execute this request
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData post(final HttpContext context) throws HttpDataException {
 		return post(context, false);
 	}
+	/**
+	 * Submit POST request
+	 * @param context A specific Apache HttpContext to execute this request
+	 * @param redirect Enable/Disable request redirection authorization
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData post(final HttpContext context, final boolean redirect) throws HttpDataException {
 		this.loadWithRedirect = redirect;
 		this.headers.add(new BasicHeader("X-Requested-With","XMLHttpRequest"));
@@ -279,12 +383,30 @@ public class HttpData extends Thread {
 		return this;
 	}
 
+	/**
+	 * Submit PUT request
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData put() throws HttpDataException {
 		return put(null);
 	}
+	/**
+	 * Submit PUT request
+	 * @param context A specific Apache HttpContext to execute this request
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData put(final HttpContext context) throws HttpDataException {
 		return put(context, false);
 	}
+	/**
+	 * Submit PUT request
+	 * @param context A specific Apache HttpContext to execute this request
+	 * @param redirect Enable/Disable request redirection authorization
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData put(final HttpContext context, final boolean redirect) throws HttpDataException {
 		this.loadWithRedirect = redirect;
 		this.headers.add(new BasicHeader("X-Requested-With","XMLHttpRequest"));
@@ -307,12 +429,30 @@ public class HttpData extends Thread {
 		return this;
 	}
 
+	/**
+	 * Submit DELETE request
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData delete() throws HttpDataException {
 		return delete(null);
 	}
+	/**
+	 * Submit DELETE request
+	 * @param context A specific Apache HttpContext to execute this request
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData delete(final HttpContext context) throws HttpDataException {
 		return delete(context, false);
 	}
+	/**
+	 * Submit DELETE request
+	 * @param context A specific Apache HttpContext to execute this request
+	 * @param redirect Enable/Disable request redirection authorization
+	 * @return HttpData current instance
+	 * @throws HttpDataException
+	 */
 	public HttpData delete(final HttpContext context, final boolean redirect) throws HttpDataException {
 		this.loadWithRedirect = redirect;
 		this.headers.add(new BasicHeader("X-Requested-With","XMLHttpRequest"));
@@ -320,6 +460,35 @@ public class HttpData extends Thread {
 		doQuery(context, request);
 		this.loadWithRedirect = false;
 		return this;
+	}
+
+	/**
+	 * Consume a request and result
+	 */
+	public void consume() {
+		if (stream != null) 
+            try { stream.close(); } catch (IOException e) {}
+		if (entity != null) {
+			try { entity.consumeContent(); }
+			catch (IOException e) {}
+		}
+		if (request != null) request.abort();
+	}
+
+	private static String generateBoundary() {
+		StringBuilder buffer = new StringBuilder();
+		Random rand = new Random();
+		int count = rand.nextInt(11) + 30; // a random size from 30 to 40
+		for (int i = 0; i < count; i++) {
+			buffer.append(MULTIPART_CHARS[rand.nextInt(MULTIPART_CHARS.length)]);
+		}
+		return buffer.toString();
+	}
+
+	private static AbstractHttpClient getDefaultHttpClient() {
+		HttpParams params = new BasicHttpParams();
+		params.setParameter(ClientPNames.HANDLE_REDIRECTS, false);
+		return new DefaultHttpClient(params);
 	}
 
 	private void doQuery(final HttpContext context, HttpUriRequest request) throws HttpDataException {
@@ -359,26 +528,49 @@ public class HttpData extends Thread {
 		}
 	}
 
+	/**
+	 * @return Return a boolean to indicate if response is redirection 
+	 * HttpStatus = 301 or 302
+	 * Or Response header contain "Location" header value 
+	 */
 	public boolean isRedirect() {
 		int status = this.response.getStatusLine().getStatusCode();
 		return (status == HttpStatus.SC_MOVED_PERMANENTLY || status == HttpStatus.SC_MOVED_TEMPORARILY) && this.response.containsHeader("Location");
 	}
-	
+
+	/**
+	 * @return Return a boolean to indicate if status response is success
+	 */
 	public boolean isHttpOK() {
 		return this.response.getStatusLine().getStatusCode() == HttpStatus.SC_OK;
 	}
+
+	/**
+	 * @return Return a boolean to indicate if status response is unauthorized
+	 */
 	public boolean isHttpUnauthorized() {
 		int status = this.response.getStatusLine().getStatusCode();
 		return status == HttpStatus.SC_UNAUTHORIZED || status == HttpStatus.SC_FORBIDDEN;
 	}
 
+	/**
+	 * @return Return a response as Apache HttpResponse object (after execution)
+	 */
 	public HttpResponse asResponse() {
 		return this.response;
 	}
+
+	/**
+	 * @return Return a response as Apache HttpEntity object (after execution)
+	 */
 	public HttpEntity asHttpEntity() {
 		if (entity == null) this.entity = this.asResponse().getEntity();
 		return entity;
 	}
+
+	/**
+	 * @return Return a response as InputStream object (after execution)
+	 */
 	public InputStream asInputStream() {
 		if (stream == null) {
 			try {
@@ -390,9 +582,17 @@ public class HttpData extends Thread {
 		return stream;
 	}
 
+	/**
+	 * @return Return a response as UTF8 String (after execution)
+	 */
 	public String asString() {
 		return asString(HTTP.UTF_8);
 	}
+	
+	/**
+	 * @param charset request charset
+	 * @return Return a response as String (after execution)
+	 */
 	public String asString(String charset) {
 		//Log.v(TAG, "asString " + charset + ", content: " + (content != null));
 		if (content == null) {
@@ -411,6 +611,10 @@ public class HttpData extends Thread {
 		}
 		return content;
 	}
+
+	/**
+	 * @return Return a response as JSONObject (after execution)
+	 */
 	public JSONObject asJSONObject() {
 		if (this.json == null) {
 			try {
@@ -423,13 +627,17 @@ public class HttpData extends Thread {
 		return this.json;
 	}
 
-	public List<Cookie> getCookies() {
-		return this.client.getCookieStore().getCookies();
-	}
-
+	/**
+	 * @return Return a list of cookies in Apache HttpClient
+	 */
 	public List<Cookie> cookies() {
 		return this.client.getCookieStore().getCookies();
 	}
+
+	/**
+	 * Add list of cookies to Apache HttpClient instance (usable for next request)
+	 * return HttpData current instance
+	 */
 	public HttpData cookies(List<Cookie> cookies) {
 		for (Cookie cookie: cookies){
 			this.client.getCookieStore().addCookie(cookie);
@@ -437,6 +645,11 @@ public class HttpData extends Thread {
 		return this;
 	}
 
+	/**
+	 * Search and return cookie value in Apache HttpClient instance
+	 * @param name of cookie
+	 * @return HttpData current instance
+	 */
 	public String cookie(String name) {
 		String cookieId = null;
 		List<Cookie> cookies = this.client.getCookieStore().getCookies();
@@ -448,6 +661,13 @@ public class HttpData extends Thread {
 		}
 		return cookieId;
 	}
+
+	/**
+	 * Search and return cookie value in Apache HttpClient instance in a specific Apache HttpContext
+	 * @param name of cookie
+	 * @param context Apache HttpContext
+	 * @return HttpData current instance
+	 */
 	public String cookie(String name, HttpContext context) {
 		CookieStore cookies = (CookieStore) context.getAttribute(ClientContext.COOKIE_STORE);
 		for (Cookie c : cookies.getCookies()) {
